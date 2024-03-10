@@ -67,19 +67,21 @@ trait FazerJogada<'a> {
     fn jogar(&mut self, posicao: i32, jogador: &'a Jogador) -> Result<EstadoJogo<'a>, String>;
 }
 
+fn is_jogada_duplicada(jogadas: &Vec<Jogada<'_>>, jogada: &Jogada<'_>) -> bool {
+    jogadas
+        .iter()
+        .any(|jogada_| jogada_.get_posicao() == jogada.get_posicao())
+}
+
 impl<'a> FazerJogada<'a> for Jogo<'a> {
     fn jogar(&mut self, posicao: i32, jogador: &'a Jogador) -> Result<EstadoJogo<'a>, String> {
         if self.estado_jogo != EstadoJogo::Aberto {
-            return Err("Estado inválido".to_string());
+            return Err("Estado inválido.".to_string());
         }
 
         let jogada = Jogada::new(posicao, jogador);
 
-        let is_jogada_duplicada = self
-            .jogadas
-            .iter()
-            .any(|jogada_| jogada_.get_posicao() == jogada.get_posicao());
-        if is_jogada_duplicada {
+        if is_jogada_duplicada(&self.jogadas, &jogada) {
             return Err(MSG_JOGADA_DUPLICADA.to_string());
         }
 
@@ -99,8 +101,6 @@ impl<'a> FazerJogada<'a> for Jogo<'a> {
             self.estado_jogo = EstadoJogo::Empate;
             return Ok(self.estado_jogo);
         }
-
-        println!("Jogo {:?}", self.jogadas);
 
         Ok(EstadoJogo::Aberto)
     }
@@ -146,6 +146,10 @@ fn get_jogadas_vencedoras(jogador: &Jogador) -> Vec<(Jogada, Jogada, Jogada)> {
     retorno
 }
 
+fn is_posicao_valida(posicao: i32) -> bool {
+    posicao < 1 || posicao > 9
+}
+
 pub fn jogar() {
     let maria: Jogador = Jogador::maria();
     let joao: Jogador = Jogador::joao();
@@ -161,7 +165,7 @@ pub fn jogar() {
 
         stdin()
             .read_line(&mut buffer)
-            .expect("Não foi possível obter a entrada do usuário");
+            .expect("Não foi possível ler a entrada do usuário.");
 
         let entrada = buffer.trim();
         let entrada_resultado = entrada.parse();
@@ -169,14 +173,14 @@ pub fn jogar() {
             Ok(num) => num,
             Err(_) => {
                 println!(
-                    "Não foi possível converter a entrada '{}' para um número inteiro",
+                    "Não foi possível converter '{}' para número inteiro.",
                     entrada
                 );
                 continue;
             }
         };
 
-        if posicao < 1 || posicao > 9 {
+        if is_posicao_valida(posicao) {
             println!("Posição inválida. Digite um número entre 1 e 9.");
             continue;
         }

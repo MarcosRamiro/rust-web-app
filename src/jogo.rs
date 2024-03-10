@@ -146,6 +146,7 @@ fn get_jogadas_vencedoras(jogador: &Jogador) -> Vec<(Jogada, Jogada, Jogada)> {
     retorno
 }
 
+
 fn is_posicao_valida(posicao: i32) -> bool {
     posicao < 1 || posicao > 9
 }

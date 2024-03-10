@@ -1,131 +1,81 @@
-mod database;
-mod exemplo_erro;
-mod pessoa;
+#[macro_use] extern crate rocket;
 
-use database::consultar;
-use exemplo_erro::*;
-use pessoa::{MaiorDeIdade, Pessoa};
-use std::{
-    fs::File,
-    io::{self, Read},
-    ops::Deref,
-};
+#[cfg(test)] mod tests;
 
-fn read_name_from_file() -> Result<String, io::Error> {
-    let mut s = String::new();
-    let file_result = File::open("/home/marcos/texto.txt");
-
-    let mut file = match file_result {
-        Ok(file) => file,
-        Err(e) => return Err(e),
-    };
-
-    file.read_to_string(&mut s)?;
-
-    Ok(s.trim_end().to_string())
+#[derive(FromFormField)]
+enum Lang {
+    #[field(value = "en")]
+    English,
+    #[field(value = "ru")]
+    #[field(value = "ру")]
+    Russian
 }
 
-fn print_divisao(resultado: Option<i32>) {
-    match resultado {
-        Some(value) => println!("O resultado da divisao é: {}", value),
-        None => println!("Deu ruim: Nao tem retorno."),
-    };
+#[derive(FromForm)]
+struct Options<'r> {
+    emoji: bool,
+    name: Option<&'r str>,
 }
 
-fn is_maior_de_idade(obj: &dyn MaiorDeIdade) -> bool {
-    obj.is_maior_de_idade()
+// Try visiting:
+//   http://127.0.0.1:8000/hello/world
+#[get("/world")]
+fn world() -> &'static str {
+    "Hello, world!"
 }
 
-mod jogo;
+// Try visiting:
+//   http://127.0.0.1:8000/hello/мир
+#[get("/мир")]
+fn mir() -> &'static str {
+    "Привет, мир!"
+}
 
-use jogo::jogar;
+// Try visiting:
+//   http://127.0.0.1:8000/wave/Rocketeer/100
+#[get("/<name>/<age>")]
+fn wave(name: &str, age: u8) -> String {
+    format!("👋 Hello, {} year old named {}!", age, name)
+}
 
-// cargo watch -x run
-fn main() {
-    jogar()
-
-    /*
-    let pessoa1 = Pessoa::default();
-    let pessoa2 = Pessoa::default();
-    let pessoa3 = Pessoa::default();
-    let mut pessoas: Vec<&dyn MaiorDeIdade> = Vec::new();
-    pessoas.push(&pessoa1);
-    pessoas.push(&pessoa2);
-    pessoas.push(&pessoa3);
-
-    // println!("{:?}", pessoas);
-    println!("Total de pessoas na lista = {}", pessoas.len());
-    println!("Primeira pessoa é maior de 18 anos = {}", is_maior_de_idade(pessoas[0]));
-
-    for pessoa in pessoas {
-        println!("Pessoa = {}", pessoa.to_string());
+// Note: without the `..` in `opt..`, we'd need to pass `opt.emoji`, `opt.name`.
+//
+// Try visiting:
+//   http://127.0.0.1:8000/?emoji
+//   http://127.0.0.1:8000/?name=Rocketeer
+//   http://127.0.0.1:8000/?lang=ру
+//   http://127.0.0.1:8000/?lang=ру&emoji
+//   http://127.0.0.1:8000/?emoji&lang=en
+//   http://127.0.0.1:8000/?name=Rocketeer&lang=en
+//   http://127.0.0.1:8000/?emoji&name=Rocketeer
+//   http://127.0.0.1:8000/?name=Rocketeer&lang=en&emoji
+//   http://127.0.0.1:8000/?lang=ru&emoji&name=Rocketeer
+#[get("/?<lang>&<opt..>")]
+fn hello(lang: Option<Lang>, opt: Options<'_>) -> String {
+    let mut greeting = String::new();
+    if opt.emoji {
+        greeting.push_str("👋 ");
     }
 
-    let nome = read_name_from_file().unwrap();
-    println!("Nome é: {}", nome);
-
-    /*
-    let teste = calc(1000, 50)?;
-    println!("1 a divisao é: {}", teste);
-    let teste = calc(1000, 0)?;
-    println!("2 a divisao é: {}", teste);
-    */
-
-    let resultado = divide(10, 0);
-    match resultado {
-        Ok(value) => println!("O resultado é:: {}", value),
-        Err(err) => println!("ERRO: {}", err),
+    match lang {
+        Some(Lang::Russian) => greeting.push_str("Привет"),
+        Some(Lang::English) => greeting.push_str("Hello"),
+        None => greeting.push_str("Hi"),
     }
 
-    // esse aqui não vai dar erro pois
-    println!("a divisao é: {}", divide(100, 5)?);
-    let resultado_divisao = divide_option(120, 20);
-    print_divisao(resultado_divisao);
-    print_divisao(divide_option(12, 0));
-    println!("resultado {:?}", resultado_divisao);
-    let contador = consultar();
-    println!("Executado com sucesso: {}", contador );
+    if let Some(name) = opt.name {
+        greeting.push_str(", ");
+        greeting.push_str(name);
+    }
 
-    println!("Hello, world!");
-
-    let nova_pessoa = {
-        let idade: i32 = 23;
-        let nome: String = String::from("Maria");
-        let sobrenome = Some("Silva".to_string());
-        println!("idade: {}", idade);
-        println!("nome: {}", nome);
-        println!("sobrenome: {:?}", sobrenome);
-
-        let nova_pessoa = Pessoa::new(nome, idade, sobrenome);
-
-        nova_pessoa
-    };
-
-    println!("Nova pessoa: {:?}", nova_pessoa);
-    println!("Nova pessoa nome: {}", nova_pessoa.get_nome());
-    println!("Nova pessoa nome completo: {}", nova_pessoa.get_nome_completo());
-    println!("Nova pessoa idade: {}", nova_pessoa.get_idade());
-    println!("Nova pessoa maior de idade: {}", nova_pessoa.is_maior_de_idade());
-    println!("Nova pessoa: {:?}", nova_pessoa);
-
-    let pessoa = Pessoa::default();
-    println!("Pessoa: {:?}", pessoa);
-    println!("Maior de idade: {:?}", is_maior_de_idade(&pessoa));
-    println!("Endereço: {:?}", pessoa.get_endereco());
-    */
+    greeting.push('!');
+    greeting
 }
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
-
-    use super::*;
-
-    #[test]
-    fn test_read_name_from_file() {
-        let expected_result: Result<String, _> =
-            Ok::<String, Box<dyn Error>>("Marcos Ramiro dos Santos".to_string());
-        let result = read_name_from_file();
-        assert_eq!(result.unwrap(), expected_result.unwrap());
-    }
+#[launch]
+fn rocket() -> _ {
+    rocket::build()
+        .mount("/", routes![hello])
+        .mount("/hello", routes![world, mir])
+        .mount("/wave", routes![wave])
 }
